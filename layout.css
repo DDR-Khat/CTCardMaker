@@ -1,13 +1,26 @@
-@font-face
-{
-  font-family: 'Asap Medium';
-  src: url('fonts/asap_medium.otf') format('opentype');
+@font-face {
+    font-family: 'Asap Bold';
+    src: url('fonts/asap_bold.otf') format('opentype');
 }
 
-@font-face
-{
-  font-family: 'Days Sans Black';
-  src; url('fonts/days_sans_black.otf') format('opentype')
+@font-face {
+    font-family: 'Asap Italic';
+    src: url('fonts/asap_italic.otf') format('opentype');
+}
+
+@font-face {
+    font-family: 'Asap Medium';
+    src: url('fonts/asap_medium.otf') format('opentype');
+}
+
+@font-face {
+    font-family: 'Asap Regular';
+    src: url('fonts/asap_regular.otf') format('opentype');
+}
+
+@font-face {
+    font-family: 'Days Sans Black';
+    src: url('fonts/days_sans_black.otf') format('opentype');
 }
 
 body

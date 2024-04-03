@@ -18,11 +18,14 @@ imgPath.attribute = imgPath.base + 'attributes/';
 imgPath.status = imgPath.base + 'statuses/';
 imgPath.element = imgPath.base + 'elements/';
 imgPath.rarity = imgPath.base + 'rarities/';
+var webURL;
 const daysFont = 'Days Sans Black';
 
 document.addEventListener("DOMContentLoaded", function()
 {
     saveFileToIndexedDB(null); // Blank out cached data.
+    webURL = window.location.href;
+    webURL = webURL.substring(0, webURL.lastIndexOf('/')+1);
     var factionBoxes = document.querySelectorAll('.factions input[type="checkbox"]');
     var abilityBoxes = document.querySelectorAll('.statuses input[type="checkbox"], .attributes input[type="checkbox"]');
     var cardTypeSelect = document.getElementById("cardType");
@@ -360,7 +363,7 @@ async function ComposeCard(settings = {})
     }
     if (cardArt === undefined)
     { // If we actually have some cardArt, load it.
-        await AddImage(ctx, { filePath: imgPath['base'] + 'default', x: 129, y: 40 });
+        await AddImage(ctx, { filePath: webURL + imgPath['base'] + 'default', x: 129, y: 40 });
     }
     else
     { // Otherwise, load in the filler ? graphic.
@@ -373,42 +376,42 @@ async function ComposeCard(settings = {})
     }
     await importImg // Make sure it finishes.
     // Card frame (with banner)
-    await AddImage(ctx, { filePath: imgPath['border'] + factions[0], x: 0, y: 0 });
+    await AddImage(ctx, { filePath: webURL + imgPath['border'] + factions[0], x: 0, y: 0 });
     if (factions[1] === undefined)
     { // If we only have one Identity, use it.
-        await AddImage(ctx, { filePath: imgPath['identity'] + factions[0], x: 0, y: 0 });
+        await AddImage(ctx, { filePath: webURL + imgPath['identity'] + factions[0], x: 0, y: 0 });
     }
     else
     { // If we have two, use both and mask the second so it fades.
-        await AddImage(ctx, { filePath: imgPath['identity'] + factions[0], x: 0, y: 0 });
-        await AddImage(ctx, { filePath: imgPath['identity'] + factions[1], x: 0, y: 0, useMask: true });
+        await AddImage(ctx, { filePath: webURL + imgPath['identity'] + factions[0], x: 0, y: 0 });
+        await AddImage(ctx, { filePath: webURL + imgPath['identity'] + factions[1], x: 0, y: 0, useMask: true });
     }
     // Write the Card's name onto the image.
     WriteText(ctx, { text: cardName, x: canvas.width / 2, y: 36, fontSize: 39, outlineSize: 5, centered: true });
     // Rarity icon
-    await AddImage(ctx, { filePath: imgPath['rarity'] + rarity, x: 770, y: 40 });
+    await AddImage(ctx, { filePath: webURL + imgPath['rarity'] + rarity, x: 770, y: 40 });
     // Mana Cost icon and text
-    await AddImage(ctx, { filePath: imgPath['element'] + 'mana', x: 126, y: 22 });
+    await AddImage(ctx, { filePath: webURL + imgPath['element'] + 'mana', x: 126, y: 22 });
     WriteText(ctx, { text: manaCost, x: 228, y: 152, font: daysFont, fontSize: 75, outlineSize: 8, centered: true });
     // Card Type + Sub Type text
     WriteText(ctx, { text: (cardSubType === '' ? '' : cardSubType + ' ') + cardType, x: 511, y: 670, fontSize: 32, color: 'black', centered: true, bold: true });
     if (abilities[0] !== undefined)
     { // If we have an ability, put a plate and icon onto the card.
-        await AddImage(ctx, { filePath: IsStatus(abilities[0]) ? imgPath['status'] + 'plate' : imgPath['attribute'] + factions[0], x: 158, y: 186 });
-        await AddImage(ctx, { filePath: (IsStatus(abilities[0]) ? imgPath['status'] : imgPath['attribute']) + abilities[0], x: 165, y: 193 });
+        await AddImage(ctx, { filePath: IsStatus(abilities[0]) ? webURL + imgPath['status'] + 'plate' : webURL + imgPath['attribute'] + factions[0], x: 158, y: 186 });
+        await AddImage(ctx, { filePath: (IsStatus(abilities[0]) ? webURL + imgPath['status'] : webURL + imgPath['attribute']) + abilities[0], x: 165, y: 193 });
     }
     if (abilities[1] !== undefined)
     { // If we have a second ability, put another on below the first.
-        await AddImage(ctx, { filePath: IsStatus(abilities[1]) ? imgPath['status'] + 'plate' : imgPath['attribute'] + factions[0], x: 158, y: 300 });
-        await AddImage(ctx, { filePath: (IsStatus(abilities[1]) ? imgPath['status'] : imgPath['attribute']) + abilities[1], x: 165, y: 310 });
+        await AddImage(ctx, { filePath: IsStatus(abilities[1]) ? webURL + imgPath['status'] + 'plate' : webURL + imgPath['attribute'] + factions[0], x: 158, y: 300 });
+        await AddImage(ctx, { filePath: (IsStatus(abilities[1]) ? webURL + imgPath['status'] : webURL + imgPath['attribute']) + abilities[1], x: 165, y: 310 });
     }
     if (HasCombatStats(cardType))
     { // Should we draw atk/health on it?
         //Attack icon + Number
-        await AddImage(ctx, { filePath: imgPath['element'] + 'attack', x: 110, y: 500 });
+        await AddImage(ctx, { filePath: webURL + imgPath['element'] + 'attack', x: 110, y: 500 });
         WriteText(ctx, { text: atkNum, x: 215, y: 640, font: daysFont, fontSize: 93, outlineSize: 11, centered: true });
         //Health icon + number
-        await AddImage(ctx, { filePath: imgPath['element'] + 'health', x: 700, y: 500 });
+        await AddImage(ctx, { filePath: webURL + imgPath['element'] + 'health', x: 700, y: 500 });
         WriteText(ctx, { text: hpNum, x: 805, y: 640, font: daysFont, fontSize: 93, outlineSize: 11, centered: true });
     }
     //User generated label
@@ -500,7 +503,7 @@ function WriteText(ctx, settings = {})
         bold = false
     } = settings;
     // Set font style
-    ctx.font = (bold ? 'Bold ' : '') + fontSize + 'px ' + font;
+    ctx.font = fontSize + 'px ' + font + (bold ? ' Bold' : '');
     ctx.textAlign = (centered ? 'center' : '') // put center in if we need to
     if (Number.isInteger(outlineSize) &&
         outlineSize > 0)
@@ -538,7 +541,7 @@ function WriteMultiLineText(ctx, text, xPosition, yPosition, boxWidth, boxHeight
     for (var i = 0; i < words.length - 1; i++)
     {
         var combinedWord = words[i] + ' ' + words[i + 1];
-        if (keywords.includes(combinedWord))
+        if (keywords.includes(combinedWord.replace(/:$/, '')))
         {
             words.splice(i, 2, combinedWord);
         }
