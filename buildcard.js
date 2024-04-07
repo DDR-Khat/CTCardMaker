@@ -9,7 +9,8 @@ const subTypes =
     "Spell": ["-Generic-", "Contract", "Enchantment", "Ritual", "-Custom-"],
     "Master": [],
     "Bane": [],
-    "Boon": []
+    "Boon": [],
+    "Token": ["-Generic-", "Crusader", "Elemental", "Mercenary", "Noble", "Ooze", "Undead", "Underling", "-Custom-"]
 };
 const imgPath = {base: 'images/'};
 imgPath.border = imgPath.base + 'borders/';
@@ -132,8 +133,9 @@ function UpdateTextCount(count, textField)
     return count.replace(/\^/g, '').length.toString().concat(" / ", textField.split("/ ")[1]);
 }
 function CanHaveSubtype(input)
-{ // Check IsInnate without a master.
-    return IsInnateCard({ input });
+{ // Return true if it's a creature/spell/token.
+    const cardTypes = ['creature', 'spell', 'token'];
+    return cardTypes.includes(input.toLowerCase());
 }
 function abilityBoxClick(event, checkBoxes, abilities)
 {
@@ -254,7 +256,7 @@ function SubmitClicked(cardType, abilities, factions)
 }
 function ValidateSubType(mainType, subType, customType)
 {
-    if (!IsInnateCard({ input: mainType }) ||
+    if ((!IsInnateCard({ input: mainType }) && mainType!='Token') ||
         subType === '-Generic-')
     { // If it can't have a subtype -or- it's Generic, no data.
         return '';
@@ -377,9 +379,10 @@ async function ComposeCard(settings = {})
     await importImg // Make sure it finishes.
     // Card frame (with banner)
     await AddImage(ctx, { filePath: webURL + imgPath['border'] + factions[0], x: 0, y: 0 });
-    if (factions[1] === undefined)
-    { // If we only have one Identity, use it.
-        await AddImage(ctx, { filePath: webURL + imgPath['identity'] + factions[0], x: 0, y: 0 });
+    if (factions[1] === undefined ||
+        cardType!=="Token")
+    { // If we only have one Identity (or are a token), use that one.
+        await AddImage(ctx, { filePath: webURL + imgPath['identity'] + (cardType==="Token"? 'to' : factions[0]), x: 0, y: 0 });
     }
     else
     { // If we have two, use both and mask the second so it fades.
@@ -388,8 +391,10 @@ async function ComposeCard(settings = {})
     }
     // Write the Card's name onto the image.
     WriteText(ctx, { text: cardName, x: canvas.width / 2, y: 36, fontSize: 39, outlineSize: 5, centered: true });
-    // Rarity icon
-    await AddImage(ctx, { filePath: webURL + imgPath['rarity'] + rarity, x: 770, y: 40 });
+    if (cardType!=='Token')
+    { // Rarity icon, if we're not a token.
+        await AddImage(ctx, { filePath: webURL + imgPath['rarity'] + rarity, x: 770, y: 40 });
+    }
     // Mana Cost icon and text
     await AddImage(ctx, { filePath: webURL + imgPath['element'] + 'mana', x: 126, y: 22 });
     WriteText(ctx, { text: manaCost, x: 228, y: 152, font: daysFont, fontSize: 75, outlineSize: 8, centered: true });
@@ -484,7 +489,7 @@ async function AddImage(ctx, settings = {})
 }
 function HasCombatStats(input)
 { // Self-explanatory assist function.
-    const cardTypes = ['creature', 'master'];
+    const cardTypes = ['creature', 'master', 'token'];
     return cardTypes.includes(input.toLowerCase());
 }
 function WriteText(ctx, settings = {})
