@@ -1,16 +1,18 @@
 const statusList = ['Doomed', 'Marked', 'Stunned', 'Suppressed'];
-const attributeList = ['Amped', 'Armored', 'Backlash', 'Flight', 'Loophole', 'Multiblocker', 'Pacifist', 'Ranged', 'Restless', 'Taunt'];
+const attributeList = ['Amped', 'Armored', 'Backlash', 'Flight', 'Loophole', 'Multiblocker', 'Pacifist', 'Quickstrike', 'Ranged', 'Restless', 'Taunt', 'Unyielding'];
 const keywords = ['Activate','Aftermath','Condition','Deathblow','Devotion','Discarded','Duel','Enhance','Enrage','Entrance','Fetch','Innate','Last Word','Mastery','Mobilize','Outnumbered','Plunder','Prepare','Shift']
     .concat(statusList)
     .concat(attributeList);
 const subTypes =
 {
-    "Creature": ["-Generic-", "Crusader", "Elemental", "Mercenary", "Noble", "Ooze", "Undead", "Underling", "-Custom-"],
+    "Creature": ["-Generic-", "Crusader", "Elemental", "Mercenary", "Ooze", "Undead", "Underling", "-Custom-"],
     "Spell": ["-Generic-", "Contract", "Enchantment", "Ritual", "-Custom-"],
     "Master": [],
     "Bane": [],
     "Boon": [],
-    "Token": ["-Generic-", "Crusader", "Elemental", "Mercenary", "Noble", "Ooze", "Undead", "Underling", "-Custom-"]
+    "Token": ["-Generic-", "Crusader", "Elemental", "Mercenary", "Ooze", "Undead", "Underling", "-Custom-"],
+    "Cantrip": ["-Generic-", "Contract", "Enchantment", "Ritual", "-Custom-"],
+    "Custom": ["-Custom-"]
 };
 const imgPath = {base: 'images/'};
 imgPath.border = imgPath.base + 'borders/';
@@ -21,6 +23,8 @@ imgPath.element = imgPath.base + 'elements/';
 imgPath.rarity = imgPath.base + 'rarities/';
 var webURL;
 const daysFont = 'Days Sans Black';
+const urlParams = new URLSearchParams(window.location.search);
+const shardValue = urlParams.get('shard');
 
 document.addEventListener("DOMContentLoaded", function()
 {
@@ -33,6 +37,8 @@ document.addEventListener("DOMContentLoaded", function()
     var subTypeContainer = document.getElementById("subTypeContainer");
     var subTypeSelect = document.getElementById("subType");
     var atkhpContainer = document.getElementById("atkhealth");
+    var atkCheckContainer = document.getElementById("showAtk");
+    var hpCheckContainer = document.getElementById("showHp");
     var customSubField = document.getElementById("customSubField");
     var abilityTextArea = document.getElementById("ability");
     var abilityTextLabel = document.getElementById("abilityCount");
@@ -47,17 +53,40 @@ document.addEventListener("DOMContentLoaded", function()
     { // Update subtypes when card type changes
         var selectedCardType = cardTypeSelect.value;
         UpdateSubTypeOptions(subTypes[selectedCardType]);
-        if (HasCombatStats(selectedCardType))
+        if (HasCombatStats(selectedCardType) ||
+            selectedCardType === 'Custom')
         {
             atkhpContainer.classList.remove("hide");
+            if (selectedCardType === 'Custom')
+            {
+                atkCheckContainer.classList.remove("hide");
+                atkCheckContainer.checked = false;
+                hpCheckContainer.classList.remove("hide");
+                hpCheckContainer.checked = false;
+            }
+            else
+            {
+                atkCheckContainer.classList.add("hide");
+                atkCheckContainer.checked = true;
+                hpCheckContainer.classList.add("hide");
+                hpCheckContainer.checked = true;
+            }
         }
         else
         {
             atkhpContainer.classList.add("hide");
+            atkCheckContainer.classList.add("hide");
+            atkCheckContainer.checked = true;
+            hpCheckContainer.classList.add("hide");
+            hpCheckContainer.checked = true;
         }
         if (CanHaveSubtype(selectedCardType))
         { // Show the dropdown if it can have a subtype.
             subTypeContainer.classList.remove("hide");
+            if (selectedCardType === 'Custom')
+            {
+                subTypeSelect.value = "-Custom-";
+            }
         }
         else
         { // Otherwise hide it and blank out the value.
@@ -133,8 +162,8 @@ function UpdateTextCount(count, textField)
     return count.replace(/\^/g, '').length.toString().concat(" / ", textField.split("/ ")[1]);
 }
 function CanHaveSubtype(input)
-{ // Return true if it's a creature/spell/token.
-    const cardTypes = ['creature', 'spell', 'token'];
+{ // Return true if it's a creature/spell, a token one, or custom.
+    const cardTypes = ['creature', 'spell', 'token', 'cantrip', 'custom'];
     return cardTypes.includes(input.toLowerCase());
 }
 function abilityBoxClick(event, checkBoxes, abilities)
@@ -205,6 +234,8 @@ function SubmitClicked(cardType, abilities, factions)
     var rarity = document.getElementById("rarity").value;
     var atkValue = CardNumberToString(document.getElementById("attack").value);
     var hpValue = CardNumberToString(document.getElementById("health").value);
+    var atkState = document.getElementById("showAtk").checked && !document.getElementById("showAtk").classList.contains("hide");
+    var hpState = document.getElementById("showHp").checked && !document.getElementById("showHp").classList.contains("hide");
     var abilityText = document.getElementById("ability").value;
     var cardArt
     abilities.sort((a, b) =>
@@ -246,7 +277,8 @@ function SubmitClicked(cardType, abilities, factions)
             cardSubType:subType,
             atkNum:atkValue,
             hpNum:hpValue,
-            abilityText:abilityText
+            abilityText: abilityText,
+            showAtkHp: [atkState, hpState]
         });
     })
     .catch(function(error)
@@ -256,7 +288,7 @@ function SubmitClicked(cardType, abilities, factions)
 }
 function ValidateSubType(mainType, subType, customType)
 {
-    if ((!IsInnateCard({ input: mainType }) && mainType!='Token') ||
+    if ((!IsInnateCard({ input: mainType }) && !IsToken(mainType)) ||
         subType === '-Generic-')
     { // If it can't have a subtype -or- it's Generic, no data.
         return '';
@@ -303,6 +335,13 @@ function IsAttribute(input)
 { // Self-explanatory assist function.
     return attributeList.some(entry => entry.toLowerCase() === input.toLowerCase());
 }
+
+function IsToken(input)
+{ // Return "true" if MainType is Token or Cantrip
+    return input === "Token" ||
+        input === "Cantrip";
+}
+
 function getImageFromIndexedDB()
 {
     return new Promise((resolve, reject) =>
@@ -349,7 +388,8 @@ async function ComposeCard(settings = {})
         abilities = [undefined, undefined],
         atkNum = '4',
         hpNum = '20',
-        abilityText = '^Awaken^: Become the one true lord of the dark soul.'
+        abilityText = '^Awaken^: Become the one true lord of the dark soul.',
+        showAtkHp = [true, true]
     } = settings;
     var canvas = document.getElementById('canvas');
     var ctx = canvas.getContext('2d');
@@ -377,12 +417,30 @@ async function ComposeCard(settings = {})
         }
     }
     await importImg // Make sure it finishes.
+    if (shardValue !== null)
+    {
+        switch (Number(shardValue))
+        {
+            case 1:
+                await AddImage(ctx, { filePath: webURL + imgPath['element'] + 'mana', x: 406, y: 492 }); // 2
+                break;
+            case 2:
+                await AddImage(ctx, { filePath: webURL + imgPath['element'] + 'mana', x: 326, y: 492 }); // 1
+                await AddImage(ctx, { filePath: webURL + imgPath['element'] + 'mana', x: 496, y: 492 }); // 2
+                break;
+            default:
+                await AddImage(ctx, { filePath: webURL + imgPath['element'] + 'mana', x: 256, y: 492 }); // 1
+                await AddImage(ctx, { filePath: webURL + imgPath['element'] + 'mana', x: 406, y: 492 }); // 2
+                await AddImage(ctx, { filePath: webURL + imgPath['element'] + 'mana', x: 556, y: 492 }); // 3
+                break;
+        }
+    }
     // Card frame (with banner)
     await AddImage(ctx, { filePath: webURL + imgPath['border'] + factions[0], x: 0, y: 0 });
     if (factions[1] === undefined ||
-        cardType!=="Token")
+        IsToken(cardType))
     { // If we only have one Identity (or are a token), use that one.
-        await AddImage(ctx, { filePath: webURL + imgPath['identity'] + (cardType==="Token"? 'to' : factions[0]), x: 0, y: 0 });
+        await AddImage(ctx, { filePath: webURL + imgPath['identity'] + (IsToken(cardType) ? 'to' : factions[0]), x: 0, y: 0 });
     }
     else
     { // If we have two, use both and mask the second so it fades.
@@ -391,7 +449,7 @@ async function ComposeCard(settings = {})
     }
     // Write the Card's name onto the image.
     WriteText(ctx, { text: cardName, x: canvas.width / 2, y: 36, fontSize: 39, outlineSize: 5, centered: true });
-    if (cardType!=='Token')
+    if (!IsToken(cardType))
     { // Rarity icon, if we're not a token.
         await AddImage(ctx, { filePath: webURL + imgPath['rarity'] + rarity, x: 770, y: 40 });
     }
@@ -399,7 +457,14 @@ async function ComposeCard(settings = {})
     await AddImage(ctx, { filePath: webURL + imgPath['element'] + 'mana', x: 126, y: 22 });
     WriteText(ctx, { text: manaCost, x: 228, y: 152, font: daysFont, fontSize: 75, outlineSize: 8, centered: true });
     // Card Type + Sub Type text
-    WriteText(ctx, { text: (cardSubType === '' ? '' : cardSubType + ' ') + cardType, x: 511, y: 670, fontSize: 32, color: 'black', centered: true, bold: true });
+    if (cardType === 'Custom')
+    {
+        WriteText(ctx, { text: cardSubType, x: 511, y: 670, fontSize: 32, color: 'black', centered: true, bold: true });
+    }
+    else
+    {
+        WriteText(ctx, { text: (cardSubType === '' ? '' : cardSubType + ' ') + cardType, x: 511, y: 670, fontSize: 32, color: 'black', centered: true, bold: true });
+    }
     if (abilities[0] !== undefined)
     { // If we have an ability, put a plate and icon onto the card.
         await AddImage(ctx, { filePath: IsStatus(abilities[0]) ? webURL + imgPath['status'] + 'plate' : webURL + imgPath['attribute'] + factions[0], x: 158, y: 186 });
@@ -410,18 +475,24 @@ async function ComposeCard(settings = {})
         await AddImage(ctx, { filePath: IsStatus(abilities[1]) ? webURL + imgPath['status'] + 'plate' : webURL + imgPath['attribute'] + factions[0], x: 158, y: 300 });
         await AddImage(ctx, { filePath: (IsStatus(abilities[1]) ? webURL + imgPath['status'] : webURL + imgPath['attribute']) + abilities[1], x: 165, y: 310 });
     }
-    if (HasCombatStats(cardType))
-    { // Should we draw atk/health on it?
+    if (HasCombatStats(cardType) ||
+        showAtkHp[0] === true)
+    { // Should we draw atk on it?
         //Attack icon + Number
         await AddImage(ctx, { filePath: webURL + imgPath['element'] + 'attack', x: 110, y: 500 });
         WriteText(ctx, { text: atkNum, x: 215, y: 640, font: daysFont, fontSize: 93, outlineSize: 11, centered: true });
+
+    }
+    if (HasCombatStats(cardType) ||
+        showAtkHp[1] === true)
+    { // Should we draw hp on it?
         //Health icon + number
         await AddImage(ctx, { filePath: webURL + imgPath['element'] + 'health', x: 700, y: 500 });
         WriteText(ctx, { text: hpNum, x: 805, y: 640, font: daysFont, fontSize: 93, outlineSize: 11, centered: true });
     }
     //User generated label
-    WriteText(ctx, { text: 'USER', x: 510, y: 820, fontSize: 120, bold: true, centered: true, color: 'rgba(0, 0, 0, 0.05)' });
-    WriteText(ctx, { text: 'GENERATED', x: 510, y: 950, fontSize: 120, bold: true, centered: true, color: 'rgba(0, 0, 0, 0.05)' });
+    WriteText(ctx, { text: 'USER', x: 510, y: 820, fontSize: 120, bold: true, centered: true, color: 'rgba(0, 0, 0, 0.07)' });
+    WriteText(ctx, { text: 'GENERATED', x: 510, y: 950, fontSize: 120, bold: true, centered: true, color: 'rgba(0, 0, 0, 0.07)' });
     //Ability Text
     WriteMultiLineText(ctx, abilityText, 170, 690, 680, 280,54,46);
 }
@@ -528,7 +599,7 @@ function IsInnateCard(args)
         input = undefined,
         includeMaster = false
     } = args;
-    const cardTypes = ['Creature','Spell'];
+    const cardTypes = ['Creature','Spell','Custom'];
     if (includeMaster)
     { // If we also want to check for masters...
         cardTypes.push('Master');
@@ -653,35 +724,57 @@ function WriteMultiLineText(ctx, text, xPosition, yPosition, boxWidth, boxHeight
         for (var wordIndex in lines[lineIndex].Words) 
         {
             const word = lines[lineIndex].Words[wordIndex].word;
-            var returnColon = false;
-            if (word.endsWith('^:')) 
-            {
-                returnColon = true;
-            }
-            let strippedWord = word.replace(/^\^|\^:?$|\^$/g, ''); // Adjusted regex to allow optional colon at end within ^...^
-            let wordWidth = ctx.measureText(strippedWord).width;
+            let displayWord = word;
+            let underlineWord = word;
+            let isCaretEnclosed = false;
 
-            ctx.fillText(returnColon ? strippedWord += ':' : strippedWord, xCoordinate, yCoordinate);
-            // Check for word enclosed within "^...^", allowing optional colon at end
-            if (/^\^.*\^:?$/.test(word)) 
+            // Check for caret-enclosed words
+            if (/\^[^(^]*\^/.test(word))
             {
-                ctx.fillRect(xCoordinate, yCoordinate + 2, wordWidth, 4); // Underline
+                isCaretEnclosed = true;
+                displayWord = word.replace(/\^([^(^]*)\^/, '$1'); // Remove carets but keep other characters
+                underlineWord = displayWord.replace(/[()]/g, ''); // Remove parentheses for underlining
+            }
+
+            // Handle colons
+            let hasColon = displayWord.endsWith(':');
+            if (hasColon)
+            {
+                displayWord = displayWord.slice(0, -1); // Remove colon for measurement and underlining
+            }
+
+            let wordWidth = ctx.measureText(displayWord).width;
+
+            // Draw the text
+            ctx.fillText(hasColon ? displayWord + ':' : displayWord, xCoordinate, yCoordinate);
+
+            if (isCaretEnclosed) 
+            {
+                // Underline the word inside carets (excluding parentheses)
+                let underlineWidth = ctx.measureText(underlineWord).width;
+                let underlineX = xCoordinate + (wordWidth - underlineWidth) / 2; // Center the underline
+                ctx.fillRect(underlineX, yCoordinate + 2, underlineWidth, 4);
             }
             else 
             {
-                // Check if the word matches any of the specified words
-                if ((new RegExp(`^(${keywords.join('|')})(?=(?:\\W|$))`, 'i')).test(strippedWord.replace(/:$/, ''))) 
+                // Check if the word contains any of the specified keywords
+                let matchedKeyword = keywords.find(keyword =>
+                    new RegExp(`\\b${keyword}\\b`, 'i').test(displayWord)
+                );
+
+                if (matchedKeyword) 
                 {
-                    // Underline the matched word
+                    // Find the position and width of the keyword within the word
+                    let beforeKeyword = displayWord.substring(0, displayWord.toLowerCase().indexOf(matchedKeyword.toLowerCase()));
+                    let keywordWidth = ctx.measureText(matchedKeyword).width;
+                    let keywordX = xCoordinate + ctx.measureText(beforeKeyword).width;
+
                     ctx.fillStyle = "black";
-                    if (word.endsWith(':')) 
-                    {
-                        wordWidth -= ctx.measureText(':').width;
-                    }
-                    ctx.fillRect(xCoordinate, yCoordinate + 2, wordWidth, 4);
+                    ctx.fillRect(keywordX, yCoordinate + 2, keywordWidth, 4);
                 }
             }
-            xCoordinate += ctx.measureText(strippedWord).width + spaceIncrement;
+
+            xCoordinate += wordWidth + (hasColon ? ctx.measureText(':').width : 0) + spaceIncrement;
         }
         yCoordinate += fontSize;
     }
